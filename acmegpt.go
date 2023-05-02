@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -42,7 +41,7 @@ func main() {
 	key := os.Getenv("OPENAI_API_KEY")
 
 	file := path.Join(os.Getenv("HOME"), ".acmegpt")
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err == nil {
 		var conf config
 		if err := yaml.Unmarshal(data, &conf); err != nil {
