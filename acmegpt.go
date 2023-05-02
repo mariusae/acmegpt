@@ -6,18 +6,27 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"strings"
 
 	"9fans.net/go/acme"
 	openai "github.com/sashabaranov/go-openai"
+	"gopkg.in/yaml.v3"
 )
 
 var win *acme.Win
 var client *openai.Client
 var ctx context.Context
 var needchat = make(chan bool, 1)
+var model = openai.GPT3Dot5Turbo
+
+type config struct {
+	Key   string `yaml:"key"`
+	Model string `yaml:"model"`
+}
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: acmegpt\n")
@@ -31,15 +40,29 @@ func main() {
 	flag.Parse()
 
 	key := os.Getenv("OPENAI_API_KEY")
+
+	file := path.Join(os.Getenv("HOME"), ".acmegpt")
+	data, err := ioutil.ReadFile(file)
+	if err == nil {
+		var conf config
+		if err := yaml.Unmarshal(data, &conf); err != nil {
+			log.Fatalf("unmarshal %s: %v", file, err)
+		}
+		key = conf.Key
+		if conf.Model != "" {
+			model = conf.Model
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		log.Fatal(err)
+	}
+
 	client = openai.NewClient(key)
 	ctx = context.Background()
 
-	var err error
 	win, err = acme.New()
 	if err != nil {
 		log.Fatal(err)
 	}
-	// TODO: find existing windows, make each unique
 	win.Name("+chatgpt")
 	win.Ctl("clean")
 	win.Fprintf("tag", "Get  ")
@@ -61,7 +84,7 @@ func main() {
 func chat() {
 	for range needchat {
 		req := openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
+			Model: model,
 			// Do we need any system messages?
 			Messages: readMessages(),
 		}
