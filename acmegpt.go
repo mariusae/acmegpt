@@ -20,6 +20,7 @@ var win *acme.Win
 var client *openai.Client
 var ctx context.Context
 var needchat = make(chan bool, 1)
+var needstop = make(chan bool, 1)
 var model = openai.GPT3Dot5Turbo
 
 type config struct {
@@ -64,17 +65,27 @@ func main() {
 	}
 	win.Name("+chatgpt")
 	win.Ctl("clean")
-	win.Fprintf("tag", "Get  ")
+	win.Fprintf("tag", "Get Stop ")
 
 	go chat()
 
+Events:
 	for e := range win.EventChan() {
-		if (e.C2 == 'x' || e.C2 == 'X') && string(e.Text) == "Get" {
-			select {
-			case needchat <- true:
-			default:
+		if e.C2 == 'x' || e.C2 == 'X' {
+			switch string(e.Text) {
+			case "Get":
+				select {
+				case needchat <- true:
+				default:
+				}
+				continue Events
+			case "Stop":
+				select {
+				case needstop <- true:
+				default:
+				}
+				continue Events
 			}
-			continue
 		}
 		win.WriteEvent(e)
 	}
@@ -82,6 +93,11 @@ func main() {
 
 func chat() {
 	for range needchat {
+		select {
+		case <-needstop:
+		default:
+		}
+
 		req := openai.ChatCompletionRequest{
 			Model: model,
 			// Do we need any system messages?
@@ -104,7 +120,15 @@ func chat() {
 		win.Write("data", []byte("\n\n\t"))
 		//		win.Write("data", []byte(text))
 
+	Read:
 		for {
+			select {
+			case <-needstop:
+				// In this case, abort.
+				win.Write("data", []byte("<Stopped by user>"))
+				break Read
+			default:
+			}
 			response, err := stream.Recv()
 			if errors.Is(err, io.EOF) {
 				win.Write("data", []byte("\n"))
