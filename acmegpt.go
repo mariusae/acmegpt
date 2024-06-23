@@ -21,7 +21,7 @@ var client *openai.Client
 var ctx context.Context
 var needchat = make(chan bool, 1)
 var needstop = make(chan bool, 1)
-var model = openai.GPT3Dot5Turbo
+var model = openai.GPT4o // openai.GPT3Dot5Turbo
 
 type config struct {
 	Key   string `yaml:"key"`

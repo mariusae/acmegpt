@@ -2,7 +2,7 @@ module github.com/mariusae/acmegpt
 
 go 1.20
 
-require github.com/sashabaranov/go-openai v1.9.0
+require github.com/sashabaranov/go-openai v1.26.0
 
 require 9fans.net/go v0.0.4
 
